@@ -141,6 +141,7 @@ def process_pdf_logic(pdf_path, temp_dir):
 
             for res in initial_output:
                 json_data = res.json
+                print(json_data)
                 # log(f"   JSON Keys: {json_data.keys()}") # Uncomment if desperate
                 
                 # EXTRACT FORMULAS

@@ -34,14 +34,15 @@ def apply_smart_width_logic(json_data, logger):
     Groups formulas by line. Returns list of boxes.
     """
     # 1. EXTRACT BOXES CAREFULLY
-    all_boxes = []
-    if isinstance(json_data, dict):
-        if "res" in json_data and isinstance(json_data["res"], dict):
-            all_boxes = json_data["res"].get("boxes", [])
-        elif "layout_det_res" in json_data:
-            all_boxes = json_data["layout_det_res"].get("boxes", [])
-        elif "boxes" in json_data:
-            all_boxes = json_data["boxes"]
+    # all_boxes = []
+    all_boxes = json_data.get("layout_det_res", {}).get("boxes", [])
+    # if isinstance(json_data, dict):
+    #     if "res" in json_data and isinstance(json_data["res"], dict):
+    #         all_boxes = json_data["res"].get("boxes", [])
+    #     elif "layout_det_res" in json_data:
+    #         all_boxes = json_data["layout_det_res"].get("boxes", [])
+    #     elif "boxes" in json_data:
+    #         all_boxes = json_data["boxes"]
     
     if not all_boxes:
         logger(f"   ⚠️ No 'boxes' found in JSON structure. Keys: {json_data.keys() if isinstance(json_data, dict) else 'Not Dict'}")
@@ -145,7 +146,7 @@ def process_pdf_logic(pdf_path, temp_dir):
                 # log(f"   JSON Keys: {json_data.keys()}") # Uncomment if desperate
                 
                 # EXTRACT FORMULAS
-                formulas = apply_smart_width_logic(json_data, log)
+                formulas = apply_smart_width_logic(json_data["res"], log)
                 log(f"   Found {len(formulas)} smart formulas.")
 
                 # CROP & RE-OCR

@@ -142,7 +142,7 @@ def process_pdf_logic(pdf_path, temp_dir):
 
             for res in initial_output:
                 json_data = res.json
-                print(json_data)
+                # print(json_data)
                 # log(f"   JSON Keys: {json_data.keys()}") # Uncomment if desperate
                 
                 # EXTRACT FORMULAS
@@ -154,23 +154,26 @@ def process_pdf_logic(pdf_path, temp_dir):
                     coords = [int(c) for c in box['coordinate']]
                     x1, y1, x2, y2 = coords
                     
+                    y1, x1 = max(0, y1), max(0, x1)
+                    y2, x2 = min(img_bgr.shape[0], y2), min(img_bgr.shape[1], x2)
                     # Add Padding & Clip
-                    x1, y1 = max(0, x1), max(0, y1)
-                    x2, y2 = min(img_bgr.shape[1], x2 + 2), min(img_bgr.shape[0], y2 + 2)
+                    # x1, y1 = max(0, x1), max(0, y1)
+                    # x2, y2 = min(img_bgr.shape[1], x2 + 2), min(img_bgr.shape[0], y2 + 2)
 
                     if y2 > y1 and x2 > x1:
-                        crop = img_bgr[max(0, y1-2):y2, x1:x2]
+                        crop = img_bgr[y1-2:y2+2, x1:x2+2]
+                        # crop = img_bgr[max(0, y1-2):y2, x1:x2]
                         crop_path = os.path.join(temp_dir, f"p{page_num}_f{idx}.png")
                         cv2.imwrite(crop_path, crop)
 
                         crop_out = pipeline.predict(crop_path)
                         for c_res in crop_out:
                             md = c_res.markdown
-                            log(f"      Markdown: {md[:20]}...") 
+                            log(f"      Markdown: {md}...") 
                             results_data.append({
                                 "page": page_num,
                                 "id": idx+1,
-                                "markdown": md
+                                "markdown": md["markdown_texts"]
                             })
         except Exception as e:
             log(f"❌ Error on Page {page_num}: {e}")

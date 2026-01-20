@@ -22,6 +22,10 @@ def save_and_predict(file):
             os.remove(temp_path)
         raise e
 
+@app.get("/")
+def home():
+    return "Hello Friends"
+
 @app.route('/ocr/json', methods=['POST'])
 def ocr_json():
     if 'file' not in request.files:

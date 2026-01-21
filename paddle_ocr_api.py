@@ -62,7 +62,7 @@ def ocr_markdown():
     temp_dir = os.path.join("temp_api", req_id)
     os.makedirs(temp_dir, exist_ok=True)
     
-    ocr_markdown = ""
+    markdown = ""
 
     try:
         pdf_path = os.path.join(temp_dir, file.filename)
@@ -71,14 +71,14 @@ def ocr_markdown():
         initial_output = pipeline.predict(pdf_path)
 
         for res in initial_output:
-            ocr_markdown = res.markdown
+            markdown = res.markdown
 
     
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-    return ocr_markdown
+    return markdown
 
 
 if __name__ == '__main__':

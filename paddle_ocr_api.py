@@ -1,47 +1,54 @@
-from flask import Flask, request, jsonify, Response
-from paddleocr import PaddleOCRVL
 import os
+import numpy as np
+import shutil
+import uuid
+from flask import Flask, request, jsonify
+from paddleocr import PaddleOCRVL
 
 app = Flask(__name__)
 
-# Initialize Model Once
-print("Loading Model...")
-pipeline = PaddleOCRVL()
-print("Model Loaded.")
+# --- GLOBAL MODEL ---
+print("⏳ Loading PaddleOCR-VL Model...")
+try:
+    pipeline = PaddleOCRVL()
+    print("✅ Model Loaded.")
+except Exception as e:
+    print(f"❌ Model Load Failed: {e}")
+    exit()
 
-def save_and_predict(file):
-    """Helper to save uploaded file and run OCR"""
-    temp_path = f"temp_{file.filename}"
-    file.save(temp_path)
-    
-    try:
-        output = pipeline.predict(temp_path)
-        return output, temp_path
-    except Exception as e:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        raise e
-
-@app.get("/")
+@app.get('/')
 def home():
-    return "Hello Friends"
+    return "PaddleOCR-VL Equation Extraction API is running."   
 
-@app.route('/ocr/json', methods=['POST'])
-def ocr_json():
+
+@app.post('/ocr/json')
+def ocr_markdown():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({"error": "No file"}), 400
     
     file = request.files['file']
+
+    req_id = str(uuid.uuid4())
+    temp_dir = os.path.join("temp_api", req_id)
+    os.makedirs(temp_dir, exist_ok=True)
     
     try:
-        results, temp_path = save_and_predict(file)        
-        # Cleanup
-        os.remove(temp_path)
-        return jsonify({"results": results})
+        pdf_path = os.path.join(temp_dir, file.filename)
+        file.save(pdf_path)
         
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        initial_output = pipeline.predict(pdf_path)
+
+        result = {}
+        result["results"] = initial_output
+
+    
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+    return jsonify(result)
 
 
 if __name__ == '__main__':
+    os.makedirs("temp_api", exist_ok=True)
     app.run(host='0.0.0.0', port=5001)

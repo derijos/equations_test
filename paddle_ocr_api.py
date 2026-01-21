@@ -21,7 +21,7 @@ def home():
     return "PaddleOCR-VL Equation Extraction API is running."   
 
 
-@app.post('/ocr/json')
+@app.post('/json')
 def ocr_markdown():
     if 'file' not in request.files:
         return jsonify({"error": "No file"}), 400
@@ -32,21 +32,53 @@ def ocr_markdown():
     temp_dir = os.path.join("temp_api", req_id)
     os.makedirs(temp_dir, exist_ok=True)
     
+    json_data = {}
+
     try:
         pdf_path = os.path.join(temp_dir, file.filename)
         file.save(pdf_path)
         
         initial_output = pipeline.predict(pdf_path)
 
-        result = {}
-        result["results"] = initial_output
+        for res in initial_output:
+            json_data = res.json
 
     
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-    return jsonify(result)
+    return jsonify(json_data)
+
+
+@app.post('/ocr')
+def ocr_markdown():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file"}), 400
+    
+    file = request.files['file']
+
+    req_id = str(uuid.uuid4())
+    temp_dir = os.path.join("temp_api", req_id)
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    ocr_markdown = ""
+
+    try:
+        pdf_path = os.path.join(temp_dir, file.filename)
+        file.save(pdf_path)
+        
+        initial_output = pipeline.predict(pdf_path)
+
+        for res in initial_output:
+            ocr_markdown = res.markdown
+
+    
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+    return ocr_markdown
 
 
 if __name__ == '__main__':

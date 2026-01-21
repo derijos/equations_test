@@ -21,8 +21,8 @@ def home():
     return "PaddleOCR-VL Equation Extraction API is running."   
 
 
-@app.post('/json')
-def ocr_markdown():
+@app.post('/paddleocr_json')
+def paddleocr_json():
     if 'file' not in request.files:
         return jsonify({"error": "No file"}), 400
     
@@ -51,8 +51,8 @@ def ocr_markdown():
     return jsonify(json_data)
 
 
-@app.post('/ocr')
-def ocr_markdown():
+@app.post('/paddleocr_ocr')
+def paddleocr_ocr():
     if 'file' not in request.files:
         return jsonify({"error": "No file"}), 400
     

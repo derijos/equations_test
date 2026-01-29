@@ -3,7 +3,10 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "🚀 Starting installation for RTX 6000 Ada (CUDA 12.6 + PaddlePaddle + PyTorch)..."
+echo "🚀 Starting Full Stack Installation for RTX 6000 Ada..."
+echo "   (CUDA 12.6 + PaddlePaddle + PyTorch + Flask + Ollama)"
+
+# --- PART 1: SYSTEM & CUDA SETUP ---
 
 # 1. Prefer NVIDIA repo over Ubuntu's default
 echo "📌 Configuring APT preferences..."
@@ -22,7 +25,7 @@ sudo apt-get update
 sudo apt-get -y install cuda-toolkit-12-6
 
 # 4. Configure Environment Variables
-echo "🌍 Configuring Environment Variables..."
+echo "🌍 Configuring CUDA Environment Variables..."
 # Add to .bashrc if not already present
 if ! grep -q "cuda-12.6/bin" ~/.bashrc; then
     echo 'export PATH=/usr/local/cuda-12.6/bin${PATH:+:${PATH}}' >> ~/.bashrc
@@ -36,20 +39,60 @@ fi
 export PATH=/usr/local/cuda-12.6/bin${PATH:+:${PATH}}
 export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
+
+# --- PART 2: PYTHON LIBRARIES ---
+
 # 5. Install PaddlePaddle GPU
-# Note: Using version 3.3.0 and the specific index URL as requested. 
-# If 3.3.0 is not found (as 3.0.0-beta is common), you may need to remove '==3.3.0' to get the latest.
 echo "🚣 Installing PaddlePaddle-GPU..."
 python3 -m pip install paddlepaddle-gpu==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
 # 6. Reinstall PyTorch (Uninstall old, Install new for CU124)
-# Note: Pytorch allows CU124 runtime alongside system CU126 driver usually.
 echo "🔥 Reinstalling PyTorch..."
 python3 -m pip uninstall -y torch torchvision torchaudio
 python3 -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# 7. Install PaddleOCR and dependencies
+# 7. Install Flask (Ignoring installed blinker to fix conflict)
+echo "🌶️ Installing Flask..."
+python3 -m pip install flask --ignore-installed blinker
+
+# 8. Install PaddleOCR and dependencies
 echo "📖 Installing PaddleOCR..."
 python3 -m pip install "paddleocr[doc-parser]"
 
-echo "✅ Installation Complete! Please restart your terminal or run 'source ~/.bashrc' to apply environment changes."
+
+# --- PART 3: OLLAMA SETUP ---
+
+# 9. Install Ollama
+echo "🦙 Installing Ollama..."
+curl -fsSL https://ollama.com/install.sh | sh
+
+# 10. Configure Ollama Environment
+echo "⚙️ Configuring Ollama Host..."
+if ! grep -q "OLLAMA_HOST" ~/.bashrc; then
+    echo 'export OLLAMA_HOST=0.0.0.0' >> ~/.bashrc
+fi
+export OLLAMA_HOST=0.0.0.0
+
+# 11. Start Ollama in background
+echo "▶️ Starting Ollama service..."
+nohup ollama serve > ollama.log 2>&1 &
+
+# Wait for Ollama to actually start before pulling models
+echo "⏳ Waiting for Ollama to become active..."
+until curl -s http://localhost:11434 > /dev/null; do
+    sleep 2
+    echo "   ...waiting for server"
+done
+echo "🟢 Ollama is active!"
+
+# 12. Pull Models
+echo "📥 Pulling AI Models..."
+# Note: Ensure these model names are exact. If a model doesn't exist in the library, the script will stop (due to set -e).
+ollama pull gemma3:27b
+ollama pull gemma3:12b
+ollama pull gpt-oss:20b
+ollama pull llama3.1:8b
+ollama pull deepseek-ocr:3b
+
+echo "✅ All Installations Complete! Environment ready."
+echo "   Please run 'source ~/.bashrc' to apply environment changes manually."

@@ -4,7 +4,7 @@
 set -e
 
 echo "🚀 Starting Full Stack Installation for RTX 6000 Ada..."
-echo "   (CUDA 12.6 + PaddlePaddle + PyTorch + Flask + Ollama)"
+echo "   (CUDA 12.6 + PaddlePaddle + PyTorch + Flask + Ollama + OCR API)"
 
 # --- PART 1: SYSTEM & CUDA SETUP ---
 
@@ -92,7 +92,32 @@ ollama pull gemma3:27b
 ollama pull gemma3:12b
 ollama pull gpt-oss:20b
 ollama pull llama3.1:8b
-ollama pull deepseek-ocr:3b
+# ollama pull deepseek-ocr:3b # Uncomment if this model exists in your Ollama library
 
-echo "✅ All Installations Complete! Environment ready."
+
+# --- PART 4: FLASK API SETUP ---
+
+echo "🔧 Configuring Runtime Environment Variables..."
+# Add fix for MKL/OpenMP conflict to .bashrc for future sessions
+if ! grep -q "KMP_DUPLICATE_LIB_OK" ~/.bashrc; then
+    echo 'export KMP_DUPLICATE_LIB_OK=TRUE' >> ~/.bashrc
+    echo 'export OMP_NUM_THREADS=1' >> ~/.bashrc
+    echo 'export CUDA_LAUNCH_BLOCKING=1' >> ~/.bashrc
+fi
+
+# Export for the current run so nohup picks them up immediately
+export KMP_DUPLICATE_LIB_OK=TRUE
+export OMP_NUM_THREADS=1
+export CUDA_LAUNCH_BLOCKING=1
+
+echo "🚀 Starting Flask API (paddle_ocr_api.py)..."
+# Check if the file exists before running to avoid error
+if [ -f "paddle_ocr_api.py" ]; then
+    nohup python3 paddle_ocr_api.py > flask_api.log 2>&1 &
+    echo "✅ Flask API started in background! (Logs: flask_api.log)"
+else
+    echo "⚠️ Warning: 'paddle_ocr_api.py' not found in current directory. Cannot start Flask app."
+fi
+
+echo "✅ All Installations & Services Started! Environment ready."
 echo "   Please run 'source ~/.bashrc' to apply environment changes manually."

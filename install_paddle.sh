@@ -92,7 +92,7 @@ ollama pull gemma3:27b
 ollama pull gemma3:12b
 ollama pull gpt-oss:20b
 ollama pull llama3.1:8b
-# ollama pull deepseek-ocr:3b # Uncomment if this model exists in your Ollama library
+ollama pull deepseek-ocr:3b # Uncomment if this model exists in your Ollama library
 
 
 # --- PART 4: FLASK API SETUP ---

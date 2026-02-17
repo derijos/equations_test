@@ -1,0 +1,11 @@
+# Install on your LOCAL machine
+# pip install -r requirements_local.txt
+
+flask
+pymupdf
+pymupdf4llm
+opencv-python
+fpdf2
+openai
+requests
+pydantic

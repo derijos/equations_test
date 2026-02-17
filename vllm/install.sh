@@ -52,8 +52,7 @@ echo "Installing PaddleOCR..."
 pip install -q "paddleocr[doc-parser]"
 
 echo "Installing PaddlePaddle GPU (CUDA 12.6)..."
-pip install -q paddlepaddle-gpu==3.2.1 \
-    -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+python3 -m pip install paddlepaddle-gpu==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
 echo "Installing FlashAttention (must be before vLLM)..."
 PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')")

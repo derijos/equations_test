@@ -92,8 +92,7 @@ pip install -q \
     requests
 
 echo "Installing PaddlePaddle GPU (CUDA 12.6)..."
-pip install -q paddlepaddle-gpu==3.2.1 \
-    -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+python3 -m pip install paddlepaddle-gpu==3.3.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
 deactivate
 echo "✅ App venv ready (.venv_app)"

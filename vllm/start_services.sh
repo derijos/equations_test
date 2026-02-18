@@ -1,28 +1,22 @@
 #!/bin/bash
 set -e
 
-# Uses full venv paths instead of source activate
-# so this works cleanly with: bash start_services.sh
+cd /workspace/paddle_setup
+
+echo "========================================"
+echo " Starting vLLM Services"
+echo " PaddleOCR + gpt-oss-20b + DeepSeek-OCR"
+echo "========================================"
 
 export KMP_DUPLICATE_LIB_OK=TRUE
 export OMP_NUM_THREADS=1
-export CUDA_LAUNCH_BLOCKING=1
-
-mkdir -p logs
-
-echo "========================================"
-echo " Starting All Services"
-echo "========================================"
-
 
 # ============================================================
-# STEP 1: vLLM OCR Server
-# Model: PaddleOCR-VL-0.9B
-# Port:  8118
+# STEP 1: START PADDLEOCR SERVER (PORT 8118)
 # ============================================================
 
 echo ""
-echo "--- STEP 1: vLLM OCR Server (port 8118) ---"
+echo "--- STEP 1: Starting PaddleOCR Server (port 8118) ---"
 
 nohup .venv_vllm/bin/paddleocr genai_server \
     --model_name PaddleOCR-VL-0.9B \
@@ -32,93 +26,97 @@ nohup .venv_vllm/bin/paddleocr genai_server \
     --backend_config vllm_ocr_config.yaml \
     > logs/vllm_ocr.log 2>&1 &
 
-VLLM_OCR_PID=$!
-echo "vLLM OCR PID: $VLLM_OCR_PID"
+PADDLE_PID=$!
+echo "PaddleOCR PID: $PADDLE_PID"
 
-echo "Waiting for vLLM OCR to be ready..."
+echo "Waiting for PaddleOCR to be ready..."
+sleep 10
 until curl -s http://localhost:8118/v1/models > /dev/null 2>&1; do
-    sleep 3
+    sleep 5
     echo "  ...waiting"
 done
-echo "✅ vLLM OCR ready!"
-
+echo "✅ PaddleOCR server ready on port 8118"
 
 # ============================================================
-# STEP 2: vLLM LLM Server
-# Model: gpt-oss:20b
-# Port:  8119
+# STEP 2: START GPT-OSS-20B SERVER (PORT 8119)
 # ============================================================
 
 echo ""
-echo "--- STEP 2: vLLM LLM Server (port 8119) ---"
+echo "--- STEP 2: Starting gpt-oss-20b Server (port 8119) ---"
 
-nohup .venv_vllm/bin/vllm serve gpt-oss:20b \
+nohup .venv_vllm/bin/vllm serve /workspace/models/gpt-oss-20b \
     --host 0.0.0.0 \
     --port 8119 \
-    --config vllm_llm_config.yaml \
+    --gpu-memory-utilization 0.50 \
+    --max-model-len 32768 \
+    --trust-remote-code \
     > logs/vllm_llm.log 2>&1 &
 
-VLLM_LLM_PID=$!
-echo "vLLM LLM PID: $VLLM_LLM_PID"
+GPT_PID=$!
+echo "gpt-oss-20b PID: $GPT_PID"
 
-echo "Waiting for vLLM LLM to be ready..."
+echo "Waiting for gpt-oss-20b to be ready (this takes 3-5 minutes)..."
+sleep 30
 until curl -s http://localhost:8119/v1/models > /dev/null 2>&1; do
-    sleep 3
+    sleep 10
     echo "  ...waiting"
 done
-echo "✅ vLLM LLM ready!"
-
+echo "✅ gpt-oss-20b server ready on port 8119"
 
 # ============================================================
-# STEP 3: PaddleOCR Flask API
-# File:  paddle_ocr_api.py
-# Port:  5001
+# STEP 3: START DEEPSEEK-OCR SERVER (PORT 8120)
 # ============================================================
 
 echo ""
-echo "--- STEP 3: PaddleOCR Flask API (port 5001) ---"
+echo "--- STEP 3: Starting DeepSeek-OCR Server (port 8120) ---"
 
-export VLLM_SERVER_URL="http://localhost:8118/v1"
+nohup /workspace/paddle_setup/.venv_deepseek/bin/vllm serve /workspace/models/deepseek-ocr \
+    --host 0.0.0.0 \
+    --port 8120 \
+    --gpu-memory-utilization 0.25 \
+    --max-model-len 2048 \
+    --no-enable-prefix-caching \
+    --mm-processor-cache-gb 0 \
+    --logits-processors vllm.model_executor.models.deepseek_ocr:NGramPerReqLogitsProcessor \
+    > logs/deepseek_ocr.log 2>&1 &
 
-nohup .venv_app/bin/python3 paddle_ocr_api.py \
-    > logs/paddle_ocr_api.log 2>&1 &
+DEEPSEEK_PID=$!
+echo "DeepSeek-OCR PID: $DEEPSEEK_PID"
 
-PADDLE_PID=$!
-echo "PaddleOCR API PID: $PADDLE_PID"
-
-echo "Waiting for PaddleOCR API to be ready..."
-until curl -s http://localhost:5001 > /dev/null 2>&1; do
-    sleep 2
+echo "Waiting for DeepSeek-OCR to be ready (this takes 2-3 minutes)..."
+sleep 20
+until curl -s http://localhost:8120/v1/models > /dev/null 2>&1; do
+    sleep 10
     echo "  ...waiting"
 done
-echo "✅ PaddleOCR API ready!"
-
+echo "✅ DeepSeek-OCR server ready on port 8120"
 
 # ============================================================
-# SUMMARY
+# SAVE PIDS & SUMMARY
 # ============================================================
+
+echo "$PADDLE_PID $GPT_PID $DEEPSEEK_PID" > pids.txt
 
 echo ""
 echo "========================================"
-echo "✅ All Services Running on RunPod"
+echo "✅ All Services Running!"
 echo "========================================"
 echo ""
-echo "  vLLM OCR  (PaddleOCR-VL-0.9B) → :8118"
-echo "  vLLM LLM  (gpt-oss:20b)        → :8119"
-echo "  PaddleOCR Flask API             → :5001"
+echo "  PaddleOCR-VL-0.9B  → port 8118"
+echo "  gpt-oss-20b        → port 8119"
+echo "  DeepSeek-OCR       → port 8120"
+echo ""
+echo "  Verify servers:"
+echo "    curl -s http://localhost:8118/v1/models"
+echo "    curl -s http://localhost:8119/v1/models"
+echo "    curl -s http://localhost:8120/v1/models"
 echo ""
 echo "  Logs:"
 echo "    tail -f logs/vllm_ocr.log"
 echo "    tail -f logs/vllm_llm.log"
-echo "    tail -f logs/paddle_ocr_api.log"
+echo "    tail -f logs/deepseek_ocr.log"
 echo ""
-echo "  Expose these ports in RunPod dashboard:"
-echo "    5001  → PaddleOCR API  (used by app.py)"
-echo "    8119  → vLLM LLM       (used by app.py)"
-echo "    8118  → vLLM OCR       (internal only)"
+echo "  PIDs saved to pids.txt"
+echo "  To stop all: kill \$(cat pids.txt)"
 echo ""
-
-# Save PIDs for easy shutdown
-echo "$VLLM_OCR_PID $VLLM_LLM_PID $PADDLE_PID" > pids.txt
-echo "PIDs saved to pids.txt"
-echo "To stop: ./stop_services.sh"
+echo "  Check VRAM: nvidia-smi"

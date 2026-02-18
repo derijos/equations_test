@@ -11,6 +11,10 @@ echo "========================================"
 export KMP_DUPLICATE_LIB_OK=TRUE
 export OMP_NUM_THREADS=1
 
+# Add venv bin directories to PATH so ninja and other tools are found
+export PATH=/workspace/paddle_setup/.venv_vllm/bin:$PATH
+export PATH=/workspace/paddle_setup/.venv_deepseek/bin:$PATH
+
 # ============================================================
 # STEP 1: START PADDLEOCR SERVER (PORT 8118)
 # ============================================================

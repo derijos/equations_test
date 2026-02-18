@@ -13,9 +13,14 @@ print("⏳ Loading PaddleOCR-VL pipeline...")
 print(f"   Connecting to vLLM OCR server at: {VLLM_SERVER_URL}")
 try:
     pipeline = PaddleOCRVL(
-        vl_rec_backend="vllm-server",
-        vl_rec_server_url=VLLM_SERVER_URL
+    vl_rec_backend="vllm-server",
+    vl_rec_server_url=VLLM_SERVER_URL,
+    vl_rec_model_name="PaddleOCR-VL-0.9B"
     )
+    # pipeline = PaddleOCRVL(
+    #     vl_rec_backend="vllm-server",
+    #     vl_rec_server_url=VLLM_SERVER_URL
+    # )
     print("✅ PaddleOCR pipeline ready.")
 except Exception as e:
     print(f"❌ Pipeline load failed: {e}")

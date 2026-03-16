@@ -122,33 +122,33 @@ deactivate
 # PART 4: DEEPSEEK-OCR SETUP
 # ============================================================
 
-echo ""
-echo "--- PART 4: DeepSeek-OCR Setup ---"
+# echo ""
+# echo "--- PART 4: DeepSeek-OCR Setup ---"
 
-python3 -m venv .venv_deepseek
+# python3 -m venv .venv_deepseek
 
-echo "Installing vLLM nightly in separate venv..."
-.venv_deepseek/bin/pip install -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+# echo "Installing vLLM nightly in separate venv..."
+# .venv_deepseek/bin/pip install -U vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
 
-echo "Installing ninja in deepseek venv..."
-.venv_deepseek/bin/pip install ninja
+# echo "Installing ninja in deepseek venv..."
+# .venv_deepseek/bin/pip install ninja
 
-echo "Installing HuggingFace tools..."
-.venv_deepseek/bin/pip install huggingface_hub hf_transfer
+# echo "Installing HuggingFace tools..."
+# .venv_deepseek/bin/pip install huggingface_hub hf_transfer
 
-mkdir -p /workspace/models/deepseek-ocr
+# mkdir -p /workspace/models/deepseek-ocr
 
-echo "Downloading DeepSeek-OCR model (~7GB)..."
-.venv_deepseek/bin/python3 -c "
-from huggingface_hub import snapshot_download
-snapshot_download(
-    repo_id='deepseek-ai/DeepSeek-OCR',
-    local_dir='/workspace/models/deepseek-ocr'
-)
-print('✅ Model downloaded!')
-"
+# echo "Downloading DeepSeek-OCR model (~7GB)..."
+# .venv_deepseek/bin/python3 -c "
+# from huggingface_hub import snapshot_download
+# snapshot_download(
+#     repo_id='deepseek-ai/DeepSeek-OCR',
+#     local_dir='/workspace/models/deepseek-ocr'
+# )
+# print('✅ Model downloaded!')
+# "
 
-echo "✅ DeepSeek-OCR installed"
+# echo "✅ DeepSeek-OCR installed"
 
 # ============================================================
 # PART 5: CREATE CONFIG FILES & DIRECTORIES
@@ -160,18 +160,18 @@ echo "--- PART 5: Creating config files ---"
 cd /workspace/paddle_setup
 
 cat > vllm_ocr_config.yaml << 'EOF'
-gpu-memory-utilization: 0.15
+gpu-memory-utilization: 0.30
 max-num-batched-tokens: 16384
 no-enable-prefix-caching: true
 mm-processor-cache-gb: 0
 EOF
 
-cat > vllm_llm_config.yaml << 'EOF'
-gpu-memory-utilization: 0.50
-max-num-batched-tokens: 32768
-max-model-len: 32768
-no-enable-prefix-caching: true
-EOF
+# cat > vllm_llm_config.yaml << 'EOF'
+# gpu-memory-utilization: 0.50
+# max-num-batched-tokens: 32768
+# max-model-len: 32768
+# no-enable-prefix-caching: true
+# EOF
 
 mkdir -p logs
 
@@ -185,7 +185,7 @@ echo ""
 echo "Models installed:"
 echo "  - PaddleOCR-VL-0.9B"
 echo "  - gpt-oss-20b"
-echo "  - DeepSeek-OCR"
+# echo "  - DeepSeek-OCR"
 echo ""
 echo "Next step:"
 echo "  ./start_services.sh"

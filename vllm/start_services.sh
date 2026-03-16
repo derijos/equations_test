@@ -51,8 +51,8 @@ echo "--- STEP 2: Starting gpt-oss-20b Server (port 8119) ---"
 nohup .venv_vllm/bin/vllm serve /workspace/models/gpt-oss-20b \
     --host 0.0.0.0 \
     --port 8119 \
-    --gpu-memory-utilization 0.50 \
-    --max-model-len 32768 \
+    --gpu-memory-utilization 0.60 \
+    --max-model-len 95000 \
     --trust-remote-code \
     > logs/vllm_llm.log 2>&1 &
 
@@ -71,29 +71,29 @@ echo "✅ gpt-oss-20b server ready on port 8119"
 # STEP 3: START DEEPSEEK-OCR SERVER (PORT 8120)
 # ============================================================
 
-echo ""
-echo "--- STEP 3: Starting DeepSeek-OCR Server (port 8120) ---"
+# echo ""
+# echo "--- STEP 3: Starting DeepSeek-OCR Server (port 8120) ---"
 
-nohup /workspace/paddle_setup/.venv_deepseek/bin/vllm serve /workspace/models/deepseek-ocr \
-    --host 0.0.0.0 \
-    --port 8120 \
-    --gpu-memory-utilization 0.25 \
-    --max-model-len 2048 \
-    --no-enable-prefix-caching \
-    --mm-processor-cache-gb 0 \
-    --logits-processors vllm.model_executor.models.deepseek_ocr:NGramPerReqLogitsProcessor \
-    > logs/deepseek_ocr.log 2>&1 &
+# nohup /workspace/paddle_setup/.venv_deepseek/bin/vllm serve /workspace/models/deepseek-ocr \
+#     --host 0.0.0.0 \
+#     --port 8120 \
+#     --gpu-memory-utilization 0.25 \
+#     --max-model-len 2048 \
+#     --no-enable-prefix-caching \
+#     --mm-processor-cache-gb 0 \
+#     --logits-processors vllm.model_executor.models.deepseek_ocr:NGramPerReqLogitsProcessor \
+#     > logs/deepseek_ocr.log 2>&1 &
 
-DEEPSEEK_PID=$!
-echo "DeepSeek-OCR PID: $DEEPSEEK_PID"
+# DEEPSEEK_PID=$!
+# echo "DeepSeek-OCR PID: $DEEPSEEK_PID"
 
-echo "Waiting for DeepSeek-OCR to be ready (this takes 2-3 minutes)..."
-sleep 20
-until curl -s http://localhost:8120/v1/models > /dev/null 2>&1; do
-    sleep 10
-    echo "  ...waiting"
-done
-echo "✅ DeepSeek-OCR server ready on port 8120"
+# echo "Waiting for DeepSeek-OCR to be ready (this takes 2-3 minutes)..."
+# sleep 20
+# until curl -s http://localhost:8120/v1/models > /dev/null 2>&1; do
+#     sleep 10
+#     echo "  ...waiting"
+# done
+# echo "✅ DeepSeek-OCR server ready on port 8120"
 
 # ============================================================
 # SAVE PIDS & SUMMARY
@@ -108,12 +108,12 @@ echo "========================================"
 echo ""
 echo "  PaddleOCR-VL-0.9B  → port 8118"
 echo "  gpt-oss-20b        → port 8119"
-echo "  DeepSeek-OCR       → port 8120"
+# echo "  DeepSeek-OCR       → port 8120"
 echo ""
 echo "  Verify servers:"
 echo "    curl -s http://localhost:8118/v1/models"
 echo "    curl -s http://localhost:8119/v1/models"
-echo "    curl -s http://localhost:8120/v1/models"
+# echo "    curl -s http://localhost:8120/v1/models"
 echo ""
 echo "  Logs:"
 echo "    tail -f logs/vllm_ocr.log"

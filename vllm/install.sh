@@ -97,6 +97,9 @@ echo "--- PART 3: Downloading gpt-oss-20b ---"
 
 mkdir -p /workspace/models/gpt-oss-20b
 
+echo "Installing Flask..."
+pip install flask
+
 echo "Installing hf_transfer..."
 pip install hf_transfer
 

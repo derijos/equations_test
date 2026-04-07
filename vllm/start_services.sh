@@ -69,7 +69,7 @@ echo "✅ gpt-oss-20b server ready on port 8119"
 
 echo "Starting Paddle OCR API"
 source .venv_vllm/bin/activate
-nohup python paddle_ocr_api.py &
+nohup python /root/equations_test/vllm/paddle_ocr_api.py &
 
 # ============================================================
 # STEP 3: START DEEPSEEK-OCR SERVER (PORT 8120)

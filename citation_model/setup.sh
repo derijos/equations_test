@@ -39,7 +39,7 @@ echo "✅ Repo ready"
 echo ""
 echo "--- Installing dependencies ---"
 
-pip install \
+pip install --ignore-installed \
     torch==2.12.0 \
     transformers==5.9.0 \
     flask==3.1.3 \

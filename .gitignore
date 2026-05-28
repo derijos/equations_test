@@ -1,0 +1,5 @@
+citation_model/scibert_citation_model_v2/
+__pycache__/
+**/__pycache__/
+**/*.pyc
+.DS_Store

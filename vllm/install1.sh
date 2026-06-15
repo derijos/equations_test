@@ -114,66 +114,66 @@ echo "Installing PaddleOCR genai server deps..."
 
 echo "✅ PaddleOCR + vLLM installed"
 
-# ============================================================
-# PART 3: GPT-OSS-20B MODEL DOWNLOAD
-# ============================================================
-echo ""
-echo "--- PART 3: Downloading gpt-oss-20b ---"
+# # ============================================================
+# # PART 3: GPT-OSS-20B MODEL DOWNLOAD
+# # ============================================================
+# echo ""
+# echo "--- PART 3: Downloading gpt-oss-20b ---"
 
-mkdir -p /workspace/models/gpt-oss-20b
+# mkdir -p /workspace/models/gpt-oss-20b
 
-pip install flask hf_transfer
+# pip install flask hf_transfer
 
-echo "Downloading gpt-oss-20b model (~14GB)..."
-HF_HUB_ENABLE_HF_TRANSFER=1 python3 -c "
-from huggingface_hub import snapshot_download
-import os
+# echo "Downloading gpt-oss-20b model (~14GB)..."
+# HF_HUB_ENABLE_HF_TRANSFER=1 python3 -c "
+# from huggingface_hub import snapshot_download
+# import os
 
-token = os.environ.get('HF_TOKEN')
-snapshot_download(
-    repo_id='openai/gpt-oss-20b',
-    token=token,
-    local_dir='/workspace/models/gpt-oss-20b'
-)
-print('✅ Model downloaded!')
-"
+# token = os.environ.get('HF_TOKEN')
+# snapshot_download(
+#     repo_id='openai/gpt-oss-20b',
+#     token=token,
+#     local_dir='/workspace/models/gpt-oss-20b'
+# )
+# print('✅ Model downloaded!')
+# "
 
-echo "✅ gpt-oss-20b downloaded"
+# echo "✅ gpt-oss-20b downloaded"
 
-deactivate
+# deactivate
 
-# ============================================================
-# PART 4: CREATE CONFIG FILES & DIRECTORIES
-# ============================================================
-echo ""
-echo "--- PART 4: Creating config files ---"
+# # ============================================================
+# # PART 4: CREATE CONFIG FILES & DIRECTORIES
+# # ============================================================
+# echo ""
+# echo "--- PART 4: Creating config files ---"
 
-cd /workspace/paddle_setup
+# cd /workspace/paddle_setup
 
-cat > vllm_ocr_config.yaml << 'EOF'
-gpu-memory-utilization: 0.30
-max-num-batched-tokens: 16384
-no-enable-prefix-caching: true
-mm-processor-cache-gb: 0
-EOF
+# cat > vllm_ocr_config.yaml << 'EOF'
+# gpu-memory-utilization: 0.30
+# max-num-batched-tokens: 16384
+# no-enable-prefix-caching: true
+# mm-processor-cache-gb: 0
+# EOF
 
-mkdir -p logs
+# mkdir -p logs
 
-echo "✅ Config files created"
+# echo "✅ Config files created"
 
-echo ""
-echo "========================================"
-echo "✅ Installation Complete!"
-echo "========================================"
-echo ""
-echo "Pinned versions:"
-echo "  - vLLM:             ${VLLM_VERSION}"
-echo "  - PaddlePaddle GPU: ${PADDLE_VERSION}"
-echo "  - NCCL:             ${NCCL_VER}"
-echo ""
-echo "Models installed:"
-echo "  - PaddleOCR-VL-0.9B"
-echo "  - gpt-oss-20b"
-echo ""
-echo "Next step:"
-echo "  ./start_services.sh"
+# echo ""
+# echo "========================================"
+# echo "✅ Installation Complete!"
+# echo "========================================"
+# echo ""
+# echo "Pinned versions:"
+# echo "  - vLLM:             ${VLLM_VERSION}"
+# echo "  - PaddlePaddle GPU: ${PADDLE_VERSION}"
+# echo "  - NCCL:             ${NCCL_VER}"
+# echo ""
+# echo "Models installed:"
+# echo "  - PaddleOCR-VL-0.9B"
+# echo "  - gpt-oss-20b"
+# echo ""
+# echo "Next step:"
+# echo "  ./start_services.sh"

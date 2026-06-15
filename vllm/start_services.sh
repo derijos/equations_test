@@ -9,9 +9,11 @@ echo "========================================"
 
 export KMP_DUPLICATE_LIB_OK=TRUE
 export OMP_NUM_THREADS=1
+export PATH=/workspace/paddle_setup/.venv_vllm/bin:$PATH
+export PATH=/workspace/paddle_setup/.venv_gpt/bin:$PATH
 
 # ============================================================
-# STEP 1: START PADDLEOCR SERVER (PORT 8118) — uses .venv_vllm
+# STEP 1: START PADDLEOCR SERVER (PORT 8118) — .venv_vllm
 # ============================================================
 echo ""
 echo "--- STEP 1: Starting PaddleOCR Server (port 8118) ---"
@@ -35,7 +37,7 @@ done
 echo "✅ PaddleOCR server ready on port 8118"
 
 # ============================================================
-# STEP 2: START GPT-OSS-20B SERVER (PORT 8119) — uses .venv_gpt
+# STEP 2: START GPT-OSS-20B SERVER (PORT 8119) — .venv_gpt
 # ============================================================
 echo ""
 echo "--- STEP 2: Starting gpt-oss-20b Server (port 8119) ---"

@@ -4,19 +4,27 @@ set -e
 echo "========================================"
 echo " Installation Script - A100 SXM / RTX 6000 Ada"
 echo " PaddleOCR + gpt-oss-20b"
-echo " CUDA 12.6 | vLLM 0.6.6 (pinned)"
+echo " CUDA 12.6 | vLLM 0.10.2 (pulled by PaddleOCR)"
 echo "========================================"
 
 # ============================================================
 # VERSION PINS — edit here only if you need to upgrade
 # ============================================================
-VLLM_VERSION="0.6.6"
+# NOTE: vLLM is intentionally NOT pinned to 0.6.6 anymore.
+# PaddleOCR 3.x pulls in vLLM 0.10.2 as a hard dependency and
+# overrides any earlier pin. Pinning 0.6.6 here is a no-op.
+# We accept 0.10.2 and fix the prometheus compatibility instead.
 PADDLE_VERSION="3.2.1"
 PADDLE_INDEX="https://www.paddlepaddle.org.cn/packages/stable/cu126/"
 
-# CUDA deps that vLLM 0.6.x + torch 2.4.x expect
-# These are INTENTIONALLY pinned to match PaddlePaddle 3.2.1
-# so both frameworks are happy with the same set of libs
+# FIX: prometheus-fastapi-instrumentator 8.0.0 (released ~June 2026)
+# introduced a breaking change in how it iterates FastAPI routes.
+# _IncludedRouter objects no longer have a .path attribute in 8.x,
+# which causes every vLLM API request to return 500.
+# Pin to 7.x which works correctly with vLLM 0.10.2 + FastAPI.
+PROMETHEUS_INSTRUMENTATOR_VERSION="7.0.0"
+
+# CUDA deps — pinned to match PaddlePaddle 3.2.1
 NCCL_VER="2.25.1"
 NVJITLINK_VER="12.6.85"
 NVTX_VER="12.6.77"
@@ -67,35 +75,35 @@ echo "✅ CUDA 12.6 installed"
 # PART 2: PaddleOCR + vLLM Setup
 # ============================================================
 echo ""
-echo "--- PART 2: PaddleOCR + vLLM Setup (vLLM pinned to $VLLM_VERSION) ---"
+echo "--- PART 2: PaddleOCR + vLLM Setup ---"
 
 mkdir -p /workspace/paddle_setup && cd /workspace/paddle_setup
 python3 -m venv .venv_vllm
 source .venv_vllm/bin/activate
-
-# Pin vLLM to a known-good version for CUDA 12.6
-# vLLM 0.6.6 uses torch 2.4.x which expects the same CUDA libs as PaddlePaddle 3.2.1
-echo "Installing vLLM==${VLLM_VERSION}..."
-pip install vllm==${VLLM_VERSION}
 
 echo "Installing ninja..."
 pip install ninja
 
 echo "Installing Flash Attention..."
 pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
-# pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.14/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
 echo "Installing PaddleOCR..."
 pip install "paddleocr[doc-parser]"
+# PaddleOCR will pull in vLLM 0.10.2 automatically as a dependency.
+# Do NOT install vLLM separately before this — it will just get overridden.
 
 echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
 pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
 
-# ✅ KEY FIX: Force the CUDA libs to exactly what PaddlePaddle 3.2.1 requires.
-# vLLM 0.6.6 + torch 2.4.x works fine with these same versions.
-# Using --force-reinstall --no-deps prevents pip from pulling in
-# newer transitive deps from either side.
-echo "Pinning CUDA dependency versions (preventing future breakage)..."
+# ✅ KEY FIX: prometheus-fastapi-instrumentator 8.0.0 broke vLLM's API
+# server with an AttributeError on _IncludedRouter.path. Pin to 7.x.
+# This is the reason gpt-oss-20b returned 500 on every /v1/models call
+# after June 12 2026 when 8.0.0 was released.
+echo "Pinning prometheus-fastapi-instrumentator to ${PROMETHEUS_INSTRUMENTATOR_VERSION}..."
+pip install --force-reinstall "prometheus-fastapi-instrumentator==${PROMETHEUS_INSTRUMENTATOR_VERSION}"
+
+# ✅ Pin CUDA libs to match PaddlePaddle 3.2.1
+echo "Pinning CUDA dependency versions..."
 pip install --force-reinstall --no-deps \
     nvidia-nccl-cu12==${NCCL_VER} \
     nvidia-nvjitlink-cu12==${NVJITLINK_VER} \
@@ -167,9 +175,10 @@ echo "✅ Installation Complete!"
 echo "========================================"
 echo ""
 echo "Pinned versions:"
-echo "  - vLLM:             ${VLLM_VERSION}"
-echo "  - PaddlePaddle GPU: ${PADDLE_VERSION}"
-echo "  - NCCL:             ${NCCL_VER}"
+echo "  - vLLM:                           0.10.2 (set by PaddleOCR)"
+echo "  - PaddlePaddle GPU:               ${PADDLE_VERSION}"
+echo "  - prometheus-fastapi-instrumentator: ${PROMETHEUS_INSTRUMENTATOR_VERSION}"
+echo "  - NCCL:                           ${NCCL_VER}"
 echo ""
 echo "Models installed:"
 echo "  - PaddleOCR-VL-0.9B"

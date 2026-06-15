@@ -64,48 +64,17 @@ export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64${LD_LIBRARY_PATH:+:${LD_LIBRAR
 echo "✅ CUDA 12.6 installed"
 
 # ============================================================
-# PART 2: PaddleOCR Setup (.venv_vllm) — UNCHANGED from original
+# PART 2: PaddleOCR + vLLM Setup
 # ============================================================
 echo ""
-echo "--- PART 2: PaddleOCR Setup (.venv_vllm) ---"
+echo "--- PART 2: PaddleOCR + vLLM Setup (vLLM pinned to $VLLM_VERSION) ---"
 
 mkdir -p /workspace/paddle_setup && cd /workspace/paddle_setup
 python3 -m venv .venv_vllm
 source .venv_vllm/bin/activate
 
-echo "Installing ninja..."
-pip install ninja
-
-echo "Installing Flash Attention..."
-pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
-
-echo "Installing PaddleOCR..."
-pip install "paddleocr[doc-parser]"
-
-echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
-pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
-
-echo "Verifying PaddleOCR installation..."
-python3 -c "import torch; print(f'torch: {torch.__version__} | CUDA available: {torch.cuda.is_available()}')"
-python3 -c "import paddle; paddle.utils.run_check()"
-
-echo "Installing PaddleOCR genai server deps..."
-.venv_vllm/bin/paddleocr install_genai_server_deps vllm
-
-deactivate
-echo "✅ PaddleOCR installed in .venv_vllm"
-
-# ============================================================
-# PART 3: gpt-oss-20b Setup (.venv_gpt) — NEW separate venv
-# Completely isolated from PaddleOCR.
-# vLLM 0.6.6 + torch 2.4.x + pinned CUDA libs, no interference.
-# ============================================================
-echo ""
-echo "--- PART 3: gpt-oss-20b Setup (.venv_gpt, vLLM==${VLLM_VERSION}) ---"
-
-python3 -m venv .venv_gpt
-source .venv_gpt/bin/activate
-
+# Pin vLLM to a known-good version for CUDA 12.6
+# vLLM 0.6.6 uses torch 2.4.x which expects the same CUDA libs as PaddlePaddle 3.2.1
 echo "Installing vLLM==${VLLM_VERSION}..."
 pip install vllm==${VLLM_VERSION}
 
@@ -114,10 +83,19 @@ pip install ninja
 
 echo "Installing Flash Attention..."
 pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
+# pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.14/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
-# Pin CUDA libs to match vLLM 0.6.6 + torch 2.4.x
-# Safe here because PaddleOCR is in a separate venv
-echo "Pinning CUDA dependency versions..."
+echo "Installing PaddleOCR..."
+pip install "paddleocr[doc-parser]"
+
+echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
+pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
+
+# ✅ KEY FIX: Force the CUDA libs to exactly what PaddlePaddle 3.2.1 requires.
+# vLLM 0.6.6 + torch 2.4.x works fine with these same versions.
+# Using --force-reinstall --no-deps prevents pip from pulling in
+# newer transitive deps from either side.
+echo "Pinning CUDA dependency versions (preventing future breakage)..."
 pip install --force-reinstall --no-deps \
     nvidia-nccl-cu12==${NCCL_VER} \
     nvidia-nvjitlink-cu12==${NVJITLINK_VER} \
@@ -127,20 +105,22 @@ pip install --force-reinstall --no-deps \
     nvidia-cusparse-cu12==${CUSPARSE_VER} \
     nvidia-cusparselt-cu12==${CUSPARSELT_VER}
 
-echo "Verifying gpt-oss-20b venv..."
+echo "Verifying installations..."
 python3 -c "import torch; print(f'torch: {torch.__version__} | CUDA available: {torch.cuda.is_available()}')"
+python3 -c "import paddle; paddle.utils.run_check()"
 
-deactivate
-echo "✅ gpt-oss-20b venv ready in .venv_gpt"
+echo "Installing PaddleOCR genai server deps..."
+.venv_vllm/bin/paddleocr install_genai_server_deps vllm
+
+echo "✅ PaddleOCR + vLLM installed"
 
 # ============================================================
-# PART 4: GPT-OSS-20B MODEL DOWNLOAD
+# PART 3: GPT-OSS-20B MODEL DOWNLOAD
 # ============================================================
 echo ""
-echo "--- PART 4: Downloading gpt-oss-20b ---"
+echo "--- PART 3: Downloading gpt-oss-20b ---"
 
 mkdir -p /workspace/models/gpt-oss-20b
-source .venv_gpt/bin/activate
 
 pip install flask hf_transfer
 
@@ -158,14 +138,15 @@ snapshot_download(
 print('✅ Model downloaded!')
 "
 
-deactivate
 echo "✅ gpt-oss-20b downloaded"
 
+deactivate
+
 # ============================================================
-# PART 5: CREATE CONFIG FILES & DIRECTORIES
+# PART 4: CREATE CONFIG FILES & DIRECTORIES
 # ============================================================
 echo ""
-echo "--- PART 5: Creating config files ---"
+echo "--- PART 4: Creating config files ---"
 
 cd /workspace/paddle_setup
 
@@ -185,12 +166,9 @@ echo "========================================"
 echo "✅ Installation Complete!"
 echo "========================================"
 echo ""
-echo "Venvs:"
-echo "  .venv_vllm → PaddleOCR       (vLLM pulled by paddleocr)"
-echo "  .venv_gpt  → gpt-oss-20b     (vLLM ${VLLM_VERSION}, pinned CUDA libs)"
-echo ""
-echo "Pinned versions in .venv_gpt:"
+echo "Pinned versions:"
 echo "  - vLLM:             ${VLLM_VERSION}"
+echo "  - PaddlePaddle GPU: ${PADDLE_VERSION}"
 echo "  - NCCL:             ${NCCL_VER}"
 echo ""
 echo "Models installed:"

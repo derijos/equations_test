@@ -86,7 +86,7 @@ pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flas
 # pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.14/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
 echo "Installing PaddleOCR..."
-pip install "paddleocr[doc-parser]"
+pip install "paddleocr[doc-parser]==3.3.2"
 
 echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
 pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}

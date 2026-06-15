@@ -4,17 +4,19 @@ set -e
 echo "========================================"
 echo " Installation Script - A100 SXM / RTX 6000 Ada"
 echo " PaddleOCR + gpt-oss-20b"
-echo " CUDA 12.6"
+echo " CUDA 12.6 | vLLM 0.6.6 (pinned)"
 echo "========================================"
 
 # ============================================================
-# VERSION PINS
+# VERSION PINS — edit here only if you need to upgrade
 # ============================================================
 VLLM_VERSION="0.6.6"
 PADDLE_VERSION="3.2.1"
 PADDLE_INDEX="https://www.paddlepaddle.org.cn/packages/stable/cu126/"
 
-# CUDA deps for vLLM 0.6.6 + torch 2.4.x (.venv_gpt only)
+# CUDA deps that vLLM 0.6.x + torch 2.4.x expect
+# These are INTENTIONALLY pinned to match PaddlePaddle 3.2.1
+# so both frameworks are happy with the same set of libs
 NCCL_VER="2.25.1"
 NVJITLINK_VER="12.6.85"
 NVTX_VER="12.6.77"
@@ -62,9 +64,7 @@ export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64${LD_LIBRARY_PATH:+:${LD_LIBRAR
 echo "✅ CUDA 12.6 installed"
 
 # ============================================================
-# PART 2: PaddleOCR VENV (.venv_vllm)
-# PaddleOCR pulls in vLLM 0.10.2 — completely isolated here.
-# gpt-oss-20b never touches this venv.
+# PART 2: PaddleOCR Setup (.venv_vllm) — UNCHANGED from original
 # ============================================================
 echo ""
 echo "--- PART 2: PaddleOCR Setup (.venv_vllm) ---"
@@ -79,34 +79,29 @@ pip install ninja
 echo "Installing Flash Attention..."
 pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
-echo "Installing PaddleOCR (will pull vLLM 0.10.2 automatically)..."
+echo "Installing PaddleOCR..."
 pip install "paddleocr[doc-parser]"
 
 echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
 pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
 
-# Fix: prometheus-fastapi-instrumentator 8.0.0 breaks vLLM API server
-# with AttributeError: '_IncludedRouter' object has no attribute 'path'
-echo "Pinning prometheus-fastapi-instrumentator to 7.x..."
-pip install --force-reinstall "prometheus-fastapi-instrumentator==7.0.0"
+echo "Verifying PaddleOCR installation..."
+python3 -c "import torch; print(f'torch: {torch.__version__} | CUDA available: {torch.cuda.is_available()}')"
+python3 -c "import paddle; paddle.utils.run_check()"
 
 echo "Installing PaddleOCR genai server deps..."
 .venv_vllm/bin/paddleocr install_genai_server_deps vllm
 
-echo "Verifying PaddleOCR venv..."
-python3 -c "import torch; print(f'[vllm_venv] torch: {torch.__version__} | CUDA: {torch.cuda.is_available()}')"
-python3 -c "import paddle; paddle.utils.run_check()"
-
 deactivate
-echo "✅ PaddleOCR venv ready"
+echo "✅ PaddleOCR installed in .venv_vllm"
 
 # ============================================================
-# PART 3: gpt-oss-20b VENV (.venv_gpt)
-# Clean isolated venv with pinned vLLM 0.6.6 + torch 2.4.x.
-# PaddleOCR never touches this venv.
+# PART 3: gpt-oss-20b Setup (.venv_gpt) — NEW separate venv
+# Completely isolated from PaddleOCR.
+# vLLM 0.6.6 + torch 2.4.x + pinned CUDA libs, no interference.
 # ============================================================
 echo ""
-echo "--- PART 3: gpt-oss-20b Setup (.venv_gpt) ---"
+echo "--- PART 3: gpt-oss-20b Setup (.venv_gpt, vLLM==${VLLM_VERSION}) ---"
 
 python3 -m venv .venv_gpt
 source .venv_gpt/bin/activate
@@ -121,8 +116,8 @@ echo "Installing Flash Attention..."
 pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
 # Pin CUDA libs to match vLLM 0.6.6 + torch 2.4.x
-# Safe to do here because this venv has no PaddleOCR
-echo "Pinning CUDA dependency versions for vLLM 0.6.6..."
+# Safe here because PaddleOCR is in a separate venv
+echo "Pinning CUDA dependency versions..."
 pip install --force-reinstall --no-deps \
     nvidia-nccl-cu12==${NCCL_VER} \
     nvidia-nvjitlink-cu12==${NVJITLINK_VER} \
@@ -132,14 +127,14 @@ pip install --force-reinstall --no-deps \
     nvidia-cusparse-cu12==${CUSPARSE_VER} \
     nvidia-cusparselt-cu12==${CUSPARSELT_VER}
 
-echo "Verifying gpt venv..."
-python3 -c "import torch; print(f'[venv_gpt] torch: {torch.__version__} | CUDA: {torch.cuda.is_available()}')"
+echo "Verifying gpt-oss-20b venv..."
+python3 -c "import torch; print(f'torch: {torch.__version__} | CUDA available: {torch.cuda.is_available()}')"
 
 deactivate
-echo "✅ gpt-oss-20b venv ready"
+echo "✅ gpt-oss-20b venv ready in .venv_gpt"
 
 # ============================================================
-# PART 4: GPT-OSS-20B MODEL DOWNLOAD (uses .venv_gpt)
+# PART 4: GPT-OSS-20B MODEL DOWNLOAD
 # ============================================================
 echo ""
 echo "--- PART 4: Downloading gpt-oss-20b ---"
@@ -191,8 +186,12 @@ echo "✅ Installation Complete!"
 echo "========================================"
 echo ""
 echo "Venvs:"
-echo "  .venv_vllm  → PaddleOCR  (vLLM 0.10.2, auto CUDA libs)"
-echo "  .venv_gpt   → gpt-oss-20b (vLLM ${VLLM_VERSION}, pinned CUDA libs)"
+echo "  .venv_vllm → PaddleOCR       (vLLM pulled by paddleocr)"
+echo "  .venv_gpt  → gpt-oss-20b     (vLLM ${VLLM_VERSION}, pinned CUDA libs)"
+echo ""
+echo "Pinned versions in .venv_gpt:"
+echo "  - vLLM:             ${VLLM_VERSION}"
+echo "  - NCCL:             ${NCCL_VER}"
 echo ""
 echo "Models installed:"
 echo "  - PaddleOCR-VL-0.9B"

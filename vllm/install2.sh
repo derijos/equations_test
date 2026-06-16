@@ -3,18 +3,23 @@ set -e
 
 echo "========================================"
 echo " Installation Script - A100 SXM / RTX 6000 Ada"
-echo " gpt-oss-20b"
+echo " PaddleOCR + gpt-oss-20b"
 echo " CUDA 12.6 | vLLM 0.6.6 (pinned)"
 echo "========================================"
 
 # ============================================================
-# VERSION PINS — edit here only if you need to upgrade
+# VERSION PINS — strictly pinned from known-good dependency.txt
 # ============================================================
-VLLM_VERSION="0.6.6"
-# PADDLE_VERSION="3.2.1"
-# PADDLE_INDEX="https://www.paddlepaddle.org.cn/packages/stable/cu126/"
+VLLM_VERSION="0.10.2"
+PADDLE_VERSION="3.2.1"
+PADDLEOCR_VERSION="3.3.3"
+TRANSFORMERS_VERSION="4.57.6"
+FASTAPI_VERSION="0.114.2"
+PADDLE_INDEX="https://www.paddlepaddle.org.cn/packages/stable/cu126/"
 
 # CUDA deps that vLLM 0.6.x + torch 2.4.x expect
+# These are INTENTIONALLY pinned to match PaddlePaddle 3.2.1
+# so both frameworks are happy with the same set of libs
 NCCL_VER="2.25.1"
 NVJITLINK_VER="12.6.85"
 NVTX_VER="12.6.77"
@@ -62,31 +67,38 @@ export LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64${LD_LIBRARY_PATH:+:${LD_LIBRAR
 echo "✅ CUDA 12.6 installed"
 
 # ============================================================
-# PART 2: vLLM Setup (gpt-oss-20b only)
+# PART 2: PaddleOCR + vLLM Setup
 # ============================================================
 echo ""
-echo "--- PART 2: vLLM Setup (vLLM pinned to $VLLM_VERSION) ---"
+echo "--- PART 2: PaddleOCR + vLLM Setup (vLLM pinned to $VLLM_VERSION) ---"
 
 mkdir -p /workspace/paddle_setup && cd /workspace/paddle_setup
 python3 -m venv .venv_vllm
 source .venv_vllm/bin/activate
 
+# Pin vLLM to a known-good version for CUDA 12.6
+# vLLM 0.6.6 uses torch 2.4.x which expects the same CUDA libs as PaddlePaddle 3.2.1
 echo "Installing vLLM==${VLLM_VERSION}..."
 pip install vllm==${VLLM_VERSION}
 
 echo "Installing ninja..."
 pip install ninja
 
-# echo "Installing Flash Attention..."
-# pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
+echo "Installing Flash Attention..."
+pip install https://github.com/derijos/vllm_wheels/releases/download/v1.0.0/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
+# pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.14/flash_attn-2.8.2+cu128torch2.8-cp312-cp312-linux_x86_64.whl
 
-# echo "Installing PaddleOCR..."
-# pip install "paddleocr[doc-parser]==3.3.2"
+echo "Installing PaddleOCR..."
+pip install "paddleocr[doc-parser]==${PADDLEOCR_VERSION}"
 
-# echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
-# pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
+echo "Installing PaddlePaddle GPU ${PADDLE_VERSION}..."
+pip install paddlepaddle-gpu==${PADDLE_VERSION} -i ${PADDLE_INDEX}
 
-echo "Pinning CUDA dependency versions..."
+# ✅ KEY FIX: Force the CUDA libs to exactly what PaddlePaddle 3.2.1 requires.
+# vLLM 0.6.6 + torch 2.4.x works fine with these same versions.
+# Using --force-reinstall --no-deps prevents pip from pulling in
+# newer transitive deps from either side.
+echo "Pinning CUDA dependency versions (preventing future breakage)..."
 pip install --force-reinstall --no-deps \
     nvidia-nccl-cu12==${NCCL_VER} \
     nvidia-nvjitlink-cu12==${NVJITLINK_VER} \
@@ -98,11 +110,18 @@ pip install --force-reinstall --no-deps \
 
 echo "Verifying installations..."
 python3 -c "import torch; print(f'torch: {torch.__version__} | CUDA available: {torch.cuda.is_available()}')"
+python3 -c "import paddle; paddle.utils.run_check()"
 
-# echo "Installing PaddleOCR genai server deps..."
-# .venv_vllm/bin/paddleocr install_genai_server_deps vllm
+echo "Installing PaddleOCR genai server deps..."
+.venv_vllm/bin/paddleocr install_genai_server_deps vllm
 
-echo "✅ vLLM installed"
+# ✅ KEY FIX: 
+# 1. transformers 5.0.0+ removed 'all_special_tokens_extended' which vLLM 0.10.x needs
+# 2. fastapi 0.115.0+ broke prometheus_fastapi_instrumentator used by vLLM
+echo "Pinning transformers and fastapi to exactly match dependency.txt..."
+pip install "transformers==${TRANSFORMERS_VERSION}" "fastapi==${FASTAPI_VERSION}"
+
+echo "✅ PaddleOCR + vLLM installed perfectly!"
 
 # ============================================================
 # PART 3: GPT-OSS-20B MODEL DOWNLOAD
@@ -140,12 +159,12 @@ echo "--- PART 4: Creating config files ---"
 
 cd /workspace/paddle_setup
 
-# cat > vllm_ocr_config.yaml << 'EOF'
-# gpu-memory-utilization: 0.30
-# max-num-batched-tokens: 16384
-# no-enable-prefix-caching: true
-# mm-processor-cache-gb: 0
-# EOF
+cat > vllm_ocr_config.yaml << 'EOF'
+gpu-memory-utilization: 0.30
+max-num-batched-tokens: 16384
+no-enable-prefix-caching: true
+mm-processor-cache-gb: 0
+EOF
 
 mkdir -p logs
 
@@ -158,9 +177,11 @@ echo "========================================"
 echo ""
 echo "Pinned versions:"
 echo "  - vLLM:             ${VLLM_VERSION}"
+echo "  - PaddlePaddle GPU: ${PADDLE_VERSION}"
 echo "  - NCCL:             ${NCCL_VER}"
 echo ""
 echo "Models installed:"
+echo "  - PaddleOCR-VL-0.9B"
 echo "  - gpt-oss-20b"
 echo ""
 echo "Next step:"

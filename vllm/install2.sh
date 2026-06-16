@@ -17,16 +17,15 @@ TRANSFORMERS_VERSION="4.57.6"
 FASTAPI_VERSION="0.114.2"
 PADDLE_INDEX="https://www.paddlepaddle.org.cn/packages/stable/cu126/"
 
-# CUDA deps that vLLM 0.6.x + torch 2.4.x expect
-# These are INTENTIONALLY pinned to match PaddlePaddle 3.2.1
-# so both frameworks are happy with the same set of libs
-NCCL_VER="2.25.1"
-NVJITLINK_VER="12.6.85"
-NVTX_VER="12.6.77"
-CURAND_VER="10.3.7.77"
-CUSOLVER_VER="11.7.1.2"
-CUSPARSE_VER="12.5.4.2"
-CUSPARSELT_VER="0.6.3"
+# CUDA deps that vLLM 0.10.x + torch 2.x expect
+# These are INTENTIONALLY pinned from dependency.txt
+NCCL_VER="2.27.3"
+NVJITLINK_VER="12.8.93"
+NVTX_VER="12.8.90"
+CURAND_VER="10.3.9.90"
+CUSOLVER_VER="11.7.3.90"
+CUSPARSE_VER="12.5.8.93"
+CUSPARSELT_VER="0.7.1"
 
 # ============================================================
 # PREREQUISITES CHECK
